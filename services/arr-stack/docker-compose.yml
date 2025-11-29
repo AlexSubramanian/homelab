@@ -1,0 +1,81 @@
+services:
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=977
+      - PGID=988
+      - TZ=America/Denver
+    volumes:
+      - /opt/configs/sabnzbd:/config        # Changed to local
+      - /mnt/media/data/usenet:/data/usenet
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=977
+      - PGID=988
+      - TZ=America/Denver
+    volumes:
+      - /opt/configs/prowlarr:/config       # Changed to local
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=977
+      - PGID=988
+      - TZ=America/Denver
+    volumes:
+      - /opt/configs/sonarr:/config         # Changed to local
+      - /mnt/media/library/tv:/tv
+      - /mnt/media/data:/data
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=977
+      - PGID=988
+      - TZ=America/Denver
+    volumes:
+      - /opt/configs/radarr:/config         # Changed to local
+      - /mnt/media/library/movies:/movies
+      - /mnt/media/data:/data
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=977
+      - PGID=988
+      - TZ=America/Denver
+    volumes:
+      - /opt/configs/bazarr:/config         # Changed to local
+      - /mnt/media/library/movies:/movies
+      - /mnt/media/library/tv:/tv
+    ports:
+      - "6767:6767"
+    restart: unless-stopped
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - TZ=America/Denver
+    ports:
+      - "8191:8191"
+    restart: unless-stopped

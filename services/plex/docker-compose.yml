@@ -1,0 +1,16 @@
+services:
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plex
+    network_mode: host
+    environment:
+      - TZ=America/Denver
+      - PLEX_UID=977
+      - PLEX_GID=988
+    volumes:
+      - /opt/plex-config:/config
+      - /mnt/media/library:/media
+      - /dev/shm:/transcode
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped

@@ -34,7 +34,7 @@ services:
       - PGID=988
       - TZ=America/Denver
     volumes:
-      - /opt/configs/sonarr:/config         # Changed to local
+      - /opt/configs/sonarr:/config
       - /mnt/media/library/tv:/tv
       - /mnt/media/data:/data
     ports:
@@ -49,7 +49,7 @@ services:
       - PGID=988
       - TZ=America/Denver
     volumes:
-      - /opt/configs/radarr:/config         # Changed to local
+      - /opt/configs/radarr:/config
       - /mnt/media/library/movies:/movies
       - /mnt/media/data:/data
     ports:
@@ -64,11 +64,24 @@ services:
       - PGID=988
       - TZ=America/Denver
     volumes:
-      - /opt/configs/bazarr:/config         # Changed to local
+      - /opt/configs/bazarr:/config
       - /mnt/media/library/movies:/movies
       - /mnt/media/library/tv:/tv
     ports:
       - "6767:6767"
+    restart: unless-stopped
+
+  profilarr:
+    image: santiagosayshey/profilarr:latest
+    container_name: profilarr
+    environment:
+      - TZ=America/Denver
+      - PUID=977
+      - PGID=988      
+    volumes:
+      - /opt/configs/profilarr:/config
+    ports:
+      - "6868:6868"
     restart: unless-stopped
 
   flaresolverr:

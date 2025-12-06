@@ -84,6 +84,21 @@ services:
       - "6868:6868"
     restart: unless-stopped
 
+  pulsarr:
+    image: lakker/pulsarr:latest
+    container_name: pulsarr
+    environment:
+      - baseUrl=http://192.168.1.75
+      - port=3003
+      - TZ=America/Denver
+      - logLevel=info
+      - authenticationMethod=requiredExceptLocal
+    volumes:
+      - /opt/configs/pulsarr:/app/data
+    ports:
+      - "3003:3003"
+    restart: unless-stopped
+
   flaresolverr:
     image: flaresolverr/flaresolverr:latest
     container_name: flaresolverr

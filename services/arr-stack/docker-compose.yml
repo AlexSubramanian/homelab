@@ -71,17 +71,14 @@ services:
       - "6767:6767"
     restart: unless-stopped
 
-  profilarr:
-    image: santiagosayshey/profilarr:latest
-    container_name: profilarr
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
+    user: 977:988
     environment:
       - TZ=America/Denver
-      - PUID=977
-      - PGID=988      
     volumes:
-      - /opt/configs/profilarr:/config
-    ports:
-      - "6868:6868"
+      - /opt/configs/recyclarr:/config
     restart: unless-stopped
 
   pulsarr:

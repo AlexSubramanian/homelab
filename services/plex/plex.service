@@ -8,8 +8,8 @@ RequiresMountsFor=/mnt/media
 [Service]
 Type=simple
 WorkingDirectory=/opt/docker/plex
-ExecStart=/usr/bin/docker compose up
-ExecStop=/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose -f /opt/docker/plex/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /opt/docker/plex/docker-compose.yml down
 Restart=on-failure
 TimeoutStartSec=0
 

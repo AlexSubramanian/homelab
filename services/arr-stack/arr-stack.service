@@ -8,8 +8,8 @@ RequiresMountsFor=/mnt/media
 [Service]
 Type=simple
 WorkingDirectory=/opt/docker/arr-stack
-ExecStart=/usr/bin/docker compose up
-ExecStop=/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose -f /opt/docker/arr-stack/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /opt/docker/arr-stack/docker-compose.yml down
 Restart=on-failure
 TimeoutStartSec=0
 

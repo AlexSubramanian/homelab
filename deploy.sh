@@ -35,13 +35,6 @@ if [[ ! -f "$COMPOSE_SRC" ]]; then
     exit 1
 fi
 
-if [[ -L "$COMPOSE_SRC" ]]; then
-    echo "Error: $COMPOSE_SRC is a symlink (should be a regular file)."
-    echo "This likely means a previous deploy corrupted it. Fix with:"
-    echo "  git -C $REPO_DIR restore $COMPOSE_SRC"
-    exit 1
-fi
-
 # Find a .service file in the service directory, if any
 SYSTEMD_SRC="$(ls "$SERVICE_DIR"/*.service 2>/dev/null | head -1 || true)"
 
@@ -64,11 +57,25 @@ else
     fi
 fi
 
-# --- Link docker compose ---
-echo "==> Linking docker-compose.yml -> $DOCKER_DIR/"
-sudo mkdir -p "$DOCKER_DIR"
-sudo rm -f "$DOCKER_DIR/docker-compose.yml"
-sudo ln -s "$COMPOSE_SRC" "$DOCKER_DIR/docker-compose.yml"
+# --- Link service directory into /opt/docker ---
+if [[ -L "$DOCKER_DIR" ]]; then
+    CURRENT_TARGET="$(readlink "$DOCKER_DIR")"
+    if [[ "$CURRENT_TARGET" != "$SERVICE_DIR" ]]; then
+        echo "==> Updating symlink: $DOCKER_DIR -> $SERVICE_DIR"
+        sudo rm "$DOCKER_DIR"
+        sudo ln -s "$SERVICE_DIR" "$DOCKER_DIR"
+    else
+        echo "==> Symlink OK: $DOCKER_DIR -> $SERVICE_DIR"
+    fi
+elif [[ -d "$DOCKER_DIR" ]]; then
+    echo "==> WARNING: $DOCKER_DIR is a real directory, replacing with symlink"
+    sudo rm -rf "$DOCKER_DIR"
+    sudo ln -s "$SERVICE_DIR" "$DOCKER_DIR"
+else
+    echo "==> Linking: $DOCKER_DIR -> $SERVICE_DIR"
+    sudo mkdir -p "$DOCKER_BASE"
+    sudo ln -s "$SERVICE_DIR" "$DOCKER_DIR"
+fi
 
 # --- Link systemd service file ---
 if [[ -n "$SYSTEMD_SRC" ]]; then

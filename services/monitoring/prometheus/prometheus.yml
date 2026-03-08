@@ -7,27 +7,65 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Arr-stack VM (192.168.1.75) — included in this compose stack
-  - job_name: 'node-exporter-arr-stack'
+  - job_name: 'node-exporter'
     static_configs:
       - targets: ['192.168.1.75:9100']
+        labels:
+          hostname: 'arr-stack'
+      - targets: ['192.168.1.103:9100']
+        labels:
+          hostname: 'plex'
+      - targets: ['192.168.1.104:9100']
+        labels:
+          hostname: 'webserver'
 
-  - job_name: 'cadvisor-arr-stack'
+  - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
+        labels:
+          hostname: 'arr-stack'
 
-  # Plex VM (192.168.1.103) — deploy node-exporter service on this VM
-  - job_name: 'node-exporter-plex'
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
     static_configs:
-      - targets: ['192.168.1.103:9100']
+      - targets: ['http://192.168.1.75:8080']
+        labels:
+          service: 'SABnzbd'
+      - targets: ['http://192.168.1.75:7878']
+        labels:
+          service: 'Radarr'
+      - targets: ['http://192.168.1.75:8989']
+        labels:
+          service: 'Sonarr'
+      - targets: ['http://192.168.1.75:9696']
+        labels:
+          service: 'Prowlarr'
+      - targets: ['http://192.168.1.75:6767']
+        labels:
+          service: 'Bazarr'
+      - targets: ['http://192.168.1.75:3003']
+        labels:
+          service: 'Pulsarr'
+      - targets: ['http://192.168.1.103:32400/web']
+        labels:
+          service: 'Plex'
+      - targets: ['http://192.168.1.162:8123']
+        labels:
+          service: 'Home Assistant'
+      - targets: ['https://alexsubramanian.com']
+        labels:
+          service: 'alexsubramanian.com'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
 
-  # Web Server VM (192.168.1.104) — deploy node-exporter service on this VM
-  - job_name: 'node-exporter-webserver'
-    static_configs:
-      - targets: ['192.168.1.104:9100']
-
-  # Home Assistant (192.168.1.162) — enable the Prometheus integration in HA,
-  # then create a long-lived access token and uncomment this block
+  # Home Assistant Prometheus integration (uncomment after enabling in HA)
   # - job_name: 'homeassistant'
   #   metrics_path: /api/prometheus
   #   bearer_token: 'YOUR_HA_LONG_LIVED_TOKEN'

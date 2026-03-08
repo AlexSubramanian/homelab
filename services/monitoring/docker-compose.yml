@@ -4,6 +4,7 @@ services:
     container_name: grafana
     environment:
       - TZ=America/Denver
+      - GF_SERVER_ROOT_URL=http://192.168.1.75:3000
     volumes:
       - /opt/configs/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

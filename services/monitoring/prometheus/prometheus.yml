@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Arr-stack VM (192.168.1.75) — included in this compose stack
+  - job_name: 'node-exporter-arr-stack'
+    static_configs:
+      - targets: ['192.168.1.75:9100']
+
+  - job_name: 'cadvisor-arr-stack'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Plex VM (192.168.1.103) — deploy node-exporter service on this VM
+  - job_name: 'node-exporter-plex'
+    static_configs:
+      - targets: ['192.168.1.103:9100']
+
+  # Web Server VM (192.168.1.104) — deploy node-exporter service on this VM
+  - job_name: 'node-exporter-webserver'
+    static_configs:
+      - targets: ['192.168.1.104:9100']
+
+  # Home Assistant (192.168.1.162) — enable the Prometheus integration in HA,
+  # then create a long-lived access token and uncomment this block
+  # - job_name: 'homeassistant'
+  #   metrics_path: /api/prometheus
+  #   bearer_token: 'YOUR_HA_LONG_LIVED_TOKEN'
+  #   static_configs:
+  #     - targets: ['192.168.1.162:8123']

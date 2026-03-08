@@ -119,7 +119,7 @@ Last Updated: March 2026
 
 **Arr Stack VM (102):**
 ```
-/opt/configs/                  # All arr configs (local SSD)
+/opt/configs/                  # All arr + monitoring configs (local SSD)
 ├── sonarr/                    # ~45 MB
 ├── radarr/                    # ~7.7 MB
 ├── prowlarr/                  # ~2.6 MB
@@ -127,7 +127,9 @@ Last Updated: March 2026
 ├── sabnzbd/                   # ~40 KB
 ├── pulsarr/                   # ~101 MB
 ├── recyclarr/                 # ~292 MB
-└── profilarr/                 # ~128 MB
+├── profilarr/                 # ~128 MB
+├── grafana/                   # ~10 MB (dashboards, SQLite)
+└── prometheus/                # ~1-3 GB/month (TSDB, 90-day retention)
 ```
 
 ---
@@ -140,23 +142,23 @@ Last Updated: March 2026
 |---------|-----|------|-----|------|--------|------------------|
 | Home Assistant | 100 | 2 | 6GB | 32GB | Running, onboot | USB Passthrough, UEFI |
 | Minecraft | 101 | 2 | 8GB | 100GB | Stopped, manual start | — |
-| Arr Stack | 102 | 4 | 6GB | 64GB | Running | Local configs, firewall |
+| Arr Stack + Monitoring | 102 | 4 | 8GB | 64GB | Running | Local configs, firewall, monitoring stack |
 | Plex | 103 | 4 | 8GB | 32GB | Running, onboot | GPU Passthrough, UEFI, Secure Boot |
 | Web Server (planned) | 104 | 1 | 1GB | 16GB | Not yet created | Public-facing, Cloudflare proxied |
 
 **Resources When Minecraft Stopped (typical):**
 - **vCPU allocated:** 10 (1.7x overprovisioning on 6 physical cores)
-- **RAM allocated:** 20GB of 32GB — ~10GB available for host + buffers
+- **RAM allocated:** 22GB of 32GB — ~8GB available for host + buffers
 - **Overprovisioning:** Managed by Proxmox scheduler
 
 **Resources When Minecraft Running:**
 - **vCPU allocated:** 12 (2x overprovisioning)
-- **RAM allocated:** 28GB of 32GB — only ~4GB for host
+- **RAM allocated:** 30GB of 32GB — only ~2GB for host
 - **Note:** Minecraft VM is allocated 8GB but only needs 2-4GB for 2 players (few nights/month). Consider reducing to 3-4GB.
 
 **Resources With All VMs + Web Server (planned):**
 - **vCPU allocated:** 13 (2.2x overprovisioning)
-- **RAM allocated:** 29GB of 32GB with Minecraft at 8GB, or 24-25GB if Minecraft reduced to 3-4GB
+- **RAM allocated:** 31GB of 32GB with Minecraft at 8GB, or 26-27GB if Minecraft reduced to 3-4GB
 
 All VMs run Debian with Docker, except Home Assistant (HAOS) and Minecraft (Debian 12).
 
@@ -168,7 +170,7 @@ All VMs run Debian with Docker, except Home Assistant (HAOS) and Minecraft (Debi
 | Plex (103) | 29 GB | 5.0 GB | ~92 KB (fresh) | 23 GB |
 | Minecraft (101) | 100 GB | — (stopped) | — | — |
 
-Plex config will grow to 2-5 GB with a large library and thumbnails enabled. Arr stack config sizes dominated by Recyclarr (~292 MB) and Profilarr (~128 MB).
+Plex config will grow to 2-5 GB with a large library and thumbnails enabled. Arr stack config sizes dominated by Recyclarr (~292 MB) and Profilarr (~128 MB). Prometheus TSDB will grow to 10-25 GB at 90-day retention with current scrape targets.
 
 ---
 
@@ -256,14 +258,15 @@ sockets: 1
 ## Service Stack Details
 
 ### Arr Stack + SABnzbd (VM 102)
-**Purpose:** Media automation, indexing, and Usenet downloading
+**Purpose:** Media automation, indexing, Usenet downloading, and infrastructure monitoring
 
 **OS:** Debian 13 (Trixie)
 **BIOS:** SeaBIOS
 **Machine Type:** q35
 **SCSI Controller:** virtio-scsi-single with iothread
+**RAM:** 8GB (increased from 6GB to accommodate monitoring stack)
 
-**Docker Services:**
+**Docker Services (arr-stack compose):**
 - **SABnzbd:** Usenet download client (Port 8080)
 - **Radarr:** Movie management (Port 7878)
 - **Sonarr:** TV show management (Port 8989)
@@ -274,17 +277,24 @@ sockets: 1
 - **Recyclarr:** Automatic quality profile syncing (no exposed port)
 - **Profilarr:** Profile management (config at `/opt/configs/profilarr/`)
 
+**Docker Services (monitoring compose):**
+- **Grafana:** Dashboards and alerting (Port 3000)
+- **Prometheus:** Metrics collection and storage (Port 9090, 90-day retention)
+- **node-exporter:** System-level metrics (Port 9100, host network)
+- **cAdvisor:** Docker container metrics (Port 8888)
+
 **Key Configuration:**
-- All services run as UID 977 / GID 988 (matches NFS squash settings)
+- All arr services run as UID 977 / GID 988 (matches NFS squash settings)
 - **Configs stored locally** at `/opt/configs/`
 - Hardlink support enabled via single NFS mount
 - Root folders: `/movies` (Radarr), `/tv` (Sonarr)
 - No VPN needed — Usenet uses SSL encryption
 - Network firewall enabled on Proxmox interface
+- Monitoring and arr-stack are separate compose stacks with independent systemd units
 
 **Note:** VM 102 does not currently have `onboot` or `startup` order set. Consider adding `onboot: 1` and `startup: order=2` for automatic start after host reboot.
 
-**Volume Mounts (Docker):**
+**Volume Mounts (arr-stack compose):**
 ```yaml
 # Local config storage (SQLite databases)
 - /opt/configs/sonarr:/config
@@ -302,6 +312,26 @@ sockets: 1
 - /mnt/media/data:/data
 ```
 
+**Volume Mounts (monitoring compose):**
+```yaml
+# Local data storage (Prometheus TSDB, Grafana SQLite — not suitable for NFS)
+- /opt/configs/grafana:/var/lib/grafana
+- /opt/configs/prometheus:/prometheus
+
+# Prometheus config
+- ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+# Grafana auto-provisioning
+- ./grafana/provisioning:/etc/grafana/provisioning:ro
+
+# node-exporter and cAdvisor system access (read-only)
+- /:/host:ro,rslave              # node-exporter
+- /:/rootfs:ro                   # cAdvisor
+- /var/run:/var/run:ro           # cAdvisor
+- /sys:/sys:ro                   # cAdvisor
+- /var/lib/docker/:/var/lib/docker:ro  # cAdvisor
+```
+
 ### VM Configuration File (`/etc/pve/qemu-server/102.conf`)
 ```
 agent: 1
@@ -310,7 +340,7 @@ cores: 4
 cpu: host
 ide2: none,media=cdrom
 machine: q35
-memory: 6144
+memory: 8192
 name: arr-stack
 net0: virtio=BC:24:11:0A:07:A2,bridge=vmbr0,firewall=1
 numa: 0
@@ -452,19 +482,23 @@ scsihw: virtio-scsi-single
 ---
 
 ## Service Ports
-| Service | Port | Purpose | External |
-|---------|------|---------|----------|
-| Home Assistant | 8123 | Web UI & API | No |
-| Plex | 32400 | Web UI & API | No |
-| SABnzbd | 8080 | Web UI | No |
-| Radarr | 7878 | Web UI | No |
-| Sonarr | 8989 | Web UI | No |
-| Prowlarr | 9696 | Web UI | No |
-| Bazarr | 6767 | Web UI | No |
-| FlareSolverr | 8191 | API | No |
-| Pulsarr | 3003 | Web UI | No |
-| Caddy HTTP (planned) | 80 | Redirect to HTTPS | Yes |
-| Caddy HTTPS (planned) | 443 | alexsubramanian.com | Yes |
+| Service | Port | VM | Purpose | External |
+|---------|------|----|---------|----------|
+| Home Assistant | 8123 | 100 | Web UI & API | No |
+| Plex | 32400 | 103 | Web UI & API | No |
+| SABnzbd | 8080 | 102 | Web UI | No |
+| Radarr | 7878 | 102 | Web UI | No |
+| Sonarr | 8989 | 102 | Web UI | No |
+| Prowlarr | 9696 | 102 | Web UI | No |
+| Bazarr | 6767 | 102 | Web UI | No |
+| FlareSolverr | 8191 | 102 | API | No |
+| Pulsarr | 3003 | 102 | Web UI | No |
+| Grafana | 3000 | 102 | Monitoring dashboards | No |
+| Prometheus | 9090 | 102 | Metrics query & targets | No |
+| cAdvisor | 8888 | 102 | Container metrics | No |
+| node-exporter | 9100 | 102, 103, 104 | System metrics | No |
+| Caddy HTTP (planned) | 80 | 104 | Redirect to HTTPS | Yes |
+| Caddy HTTPS (planned) | 443 | 104 | alexsubramanian.com | Yes |
 
 ---
 
@@ -582,7 +616,10 @@ find /opt/plex-config -type f -exec sh -c \
 - **Home Assistant Growth:** VM resources can be expanded as automation grows
 - **Local LLM:** Consider running local LLM (like Ollama) if resources permit
 - **AWS Fallback:** S3 + CloudFront static hosting as failover for alexsubramanian.com
-- **Monitoring Stack:** Consider Uptime Kuma or similar for web server health checks
+- **Loki:** Add log aggregation to the monitoring stack (Caddy access logs, Docker logs, fail2ban)
+- **Alertmanager:** Route Prometheus alerts to Discord/email for proactive notifications
+- **Home Assistant Monitoring:** Enable HA's built-in Prometheus integration for smart home metrics
+- **Tautulli:** Plex-specific analytics with Prometheus metrics export
 
 ---
 

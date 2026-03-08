@@ -1,0 +1,16 @@
+[Unit]
+Description=Monitoring Docker Compose Application
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/docker/monitoring
+ExecStart=/usr/bin/docker compose -f /opt/docker/monitoring/docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f /opt/docker/monitoring/docker-compose.yml down
+Restart=on-failure
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

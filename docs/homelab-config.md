@@ -84,7 +84,8 @@ Last Updated: March 2026
 - **Export Path:** `192.168.1.33:/var/nfs/shared/media`
 - **Mount Point on VMs:** `/mnt/media`
 - **Protocol:** NFSv3 (U-NAS Pro does not support NFSv4)
-- **Mount Options:** `vers=3,rsize=1048576,wsize=1048576,proto=tcp,hard,nconnect=8,noatime,timeo=600,retrans=2,_netdev`
+- **Mount Options:** `vers=3,rsize=1048576,wsize=1048576,proto=tcp,hard,noatime,nconnect=8,timeo=600,retrans=2,_netdev,x-systemd.automount,x-systemd.mount-timeout=120`
+- **Automount:** Uses systemd automount so the NFS share is mounted on first access rather than at boot. This avoids a race condition where the NFS mount fails because the network interface doesn't have an IP yet when systemd tries to mount. Requires `ifupdown-wait-online.service` to be enabled.
 - **Used by:** VM 102 (Arr Stack) and VM 103 (Plex) only
 
 ### NFS Directory Structure
@@ -594,6 +595,17 @@ find /opt/plex-config -type f -exec sh -c \
 **Solution:**
 1. Ensure PUID=977 and PGID=988 in Docker containers
 2. These match U-NAS Pro's NFS squash settings
+
+### Issue: NFS mount fails on boot with "Network is unreachable"
+**Cause:** The VM's network interface is reported as "up" before it has a DHCP lease/route, so the NFS mount fires and fails immediately. The `_netdev` flag and `ifupdown-wait-online.service` alone are not sufficient because the NFS mount unit runs before the interface is fully configured.
+**Solution:**
+1. Add `x-systemd.automount,x-systemd.mount-timeout=120` to the fstab mount options — this creates an automount trigger that mounts on first access instead of at boot
+2. Enable `ifupdown-wait-online.service`: `sudo systemctl enable ifupdown-wait-online.service`
+3. Remove `RequiresMountsFor=/mnt/media` from service units — with automount, the service starts first and the mount triggers when containers access `/mnt/media`
+
+### Issue: deploy.sh fails with "File already exists" when linking systemd unit
+**Cause:** The systemd unit file at `/etc/systemd/system/<name>.service` was a regular file (manually copied) instead of a symlink. The deploy script only cleaned up symlinks.
+**Solution:** Fixed in deploy.sh — now removes both regular files and symlinks before running `systemctl link`. If hit manually: `sudo rm /etc/systemd/system/<name>.service` then re-run deploy.
 
 ### Issue: Plex not using hardware transcoding
 **Cause:** GPU not properly passed through

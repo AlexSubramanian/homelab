@@ -76,7 +76,21 @@ The script will:
 
 ### First-time setup
 
-If this is the first deploy on a fresh VM, you'll need Docker installed and the NFS share mounted at `/mnt/media`. The script creates `/opt/docker/<service>/` automatically, but the NFS mount and `/opt/configs/` (arr-stack) or `/opt/plex-config/` (plex) directories need to exist first.
+If this is the first deploy on a fresh VM, you'll need Docker installed. The script creates `/opt/docker/<service>/` automatically, but service-specific directories need to exist first.
+
+For VMs that use NFS (arr-stack, plex), add the NFS entry to `/etc/fstab` with `x-systemd.automount` so it mounts on first access rather than at boot (avoids a network race condition):
+
+```
+192.168.1.33:/var/nfs/shared/media /mnt/media nfs vers=3,rsize=1048576,wsize=1048576,proto=tcp,hard,noatime,nconnect=8,timeo=600,retrans=2,_netdev,x-systemd.automount,x-systemd.mount-timeout=120 0 0
+```
+
+Then enable the network wait service and create the mount point:
+
+```bash
+sudo systemctl enable ifupdown-wait-online.service
+sudo mkdir -p /mnt/media
+sudo systemctl daemon-reload
+```
 
 For the monitoring service, create the data directories before first deploy:
 

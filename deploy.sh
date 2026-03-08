@@ -81,8 +81,8 @@ fi
 if [[ -n "$SYSTEMD_SRC" ]]; then
     UNIT_FILE="/etc/systemd/system/$(basename "$SYSTEMD_SRC")"
     echo "==> Linking systemd unit: $UNIT_FILE"
-    # Remove stale symlink so systemctl link doesn't fail
-    if [[ -L "$UNIT_FILE" ]]; then
+    # Remove existing unit file (symlink or regular) so systemctl link doesn't fail
+    if [[ -e "$UNIT_FILE" ]] || [[ -L "$UNIT_FILE" ]]; then
         sudo rm "$UNIT_FILE"
     fi
     sudo systemctl link "$SYSTEMD_SRC"

@@ -6,56 +6,150 @@
   "panels": [
     {
       "id": 1,
-      "title": "",
+      "title": "alexsubramanian.com",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "expr": "probe_success",
-          "legendFormat": "{{service}}",
-          "refId": "A",
-          "instant": true
-        }
-      ],
+      "targets": [{ "expr": "probe_success{service=\"alexsubramanian.com\"}", "refId": "A", "instant": true }],
       "fieldConfig": {
         "defaults": {
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": { "text": "DOWN", "color": "dark-red", "index": 0 },
-                "1": { "text": "UP", "color": "dark-green", "index": 1 }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "dark-red", "value": null },
-              { "color": "dark-green", "value": 1 }
-            ]
-          },
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
           "color": { "mode": "thresholds" }
-        },
-        "overrides": []
+        }
       },
-      "options": {
-        "graphMode": "none",
-        "textMode": "name",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "orientation": "horizontal",
-        "justifyMode": "center",
-        "wideLayout": true
-      },
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 }
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 0 }
     },
     {
       "id": 2,
+      "title": "Plex",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Plex\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Home Assistant",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Home Assistant\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Sonarr",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Sonarr\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 3 }
+    },
+    {
+      "id": 5,
+      "title": "Radarr",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Radarr\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 3 }
+    },
+    {
+      "id": 6,
+      "title": "SABnzbd",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"SABnzbd\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 3 }
+    },
+    {
+      "id": 7,
+      "title": "Prowlarr",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Prowlarr\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 6 }
+    },
+    {
+      "id": 8,
+      "title": "Bazarr",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Bazarr\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 6 }
+    },
+    {
+      "id": 9,
+      "title": "Pulsarr",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{service=\"Pulsarr\"}", "refId": "A", "instant": true }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "dark-red", "index": 0 }, "1": { "text": "UP", "color": "dark-green", "index": 1 } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }, { "color": "dark-green", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "justifyMode": "center" },
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 6 }
+    },
+    {
+      "id": 10,
       "title": "Uptime History",
       "type": "state-timeline",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -100,7 +194,7 @@
         "mergeValues": true,
         "alignValue": "center"
       },
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 4 }
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 9 }
     }
   ],
   "schemaVersion": 39,
@@ -111,6 +205,6 @@
   "timezone": "",
   "title": "Service Status",
   "uid": "service-status",
-  "version": 1,
+  "version": 2,
   "refresh": "30s"
 }

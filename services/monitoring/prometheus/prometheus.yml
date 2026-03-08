@@ -30,28 +30,28 @@ scrape_configs:
     params:
       module: [http_2xx]
     static_configs:
-      - targets: ['http://192.168.1.75:8080']
+      - targets: ['http://192.168.1.75:8080/api?mode=version']
         labels:
           service: 'SABnzbd'
-      - targets: ['http://192.168.1.75:7878']
+      - targets: ['http://192.168.1.75:7878/ping']
         labels:
           service: 'Radarr'
-      - targets: ['http://192.168.1.75:8989']
+      - targets: ['http://192.168.1.75:8989/ping']
         labels:
           service: 'Sonarr'
-      - targets: ['http://192.168.1.75:9696']
+      - targets: ['http://192.168.1.75:9696/ping']
         labels:
           service: 'Prowlarr'
-      - targets: ['http://192.168.1.75:6767']
+      - targets: ['http://192.168.1.75:6767/ping']
         labels:
           service: 'Bazarr'
-      - targets: ['http://192.168.1.75:3003']
+      - targets: ['http://192.168.1.75:3003/health']
         labels:
           service: 'Pulsarr'
-      - targets: ['http://192.168.1.103:32400/web']
+      - targets: ['http://192.168.1.103:32400/identity']
         labels:
           service: 'Plex'
-      - targets: ['http://192.168.1.162:8123']
+      - targets: ['http://192.168.1.162:8123/manifest.json']
         labels:
           service: 'Home Assistant'
       - targets: ['https://alexsubramanian.com']

@@ -3,7 +3,6 @@ Description=Plex Media Server Docker Compose
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/media
 
 [Service]
 Type=simple

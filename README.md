@@ -1,21 +1,22 @@
 # homelab
 
-Infrastructure-as-code for a Proxmox homelab running on an HP EliteDesk 800 G4. Manages Docker Compose stacks and systemd service files for media, monitoring, and utility VMs.
-
-See [`docs/homelab-config.md`](docs/homelab-config.md) for full hardware specs, network layout, storage architecture, and troubleshooting history.
+Infrastructure-as-code for a Proxmox homelab running on an HP EliteDesk 800 G4. Manages Docker Compose stacks and systemd service files for media, monitoring, and web hosting VMs.
 
 ---
 
 ## VMs
 
-| VM | ID | IP | Purpose |
-|----|----|----|---------|
-| Arr Stack | 102 | 192.168.1.75 | Sonarr, Radarr, Prowlarr, Bazarr, SABnzbd, FlareSolverr, Recyclarr, Pulsarr |
-| Plex | 103 | 192.168.1.103 | Plex Media Server (Intel QuickSync transcoding) |
+| VM | ID | Purpose |
+|----|-----|---------|
+| Arr Stack | 102 | Sonarr, Radarr, Prowlarr, Bazarr, SABnzbd, FlareSolverr, Recyclarr, Pulsarr |
+| Plex | 103 | Plex Media Server (Intel QuickSync transcoding) |
+| Web Server | 104 | [alexsubramanian.com](https://alexsubramanian.com) (Hugo + Caddy + Cloudflare) |
 
-VM 102 also runs the **monitoring stack** (Grafana, Prometheus, cAdvisor, node-exporter) as a separate systemd-managed compose service. A standalone **node-exporter** service is deployed on VMs 103 and 104 for remote metric collection.
+VM 102 also runs the **monitoring stack** (Grafana, Prometheus, cAdvisor, node-exporter) as a separate systemd-managed compose service.  I plan to move this stack to a separate machine or raspberry pi so it's not on the same hardware as the VMs being monitored. A standalone **node-exporter** service is deployed on VMs 103 and 104 for remote metric collection.
 
 All VMs run Debian 13 with Docker. Media lives on NFS (`/mnt/media`) from a UniFi NAS Pro. App configs and metric databases are stored locally on each VM to avoid SQLite/NFS locking issues.
+
+Home Assistant (VM 100) and Minecraft (VM 101) are not managed by this repo — HA runs HAOS and is configured through its own interface.
 
 ---
 
@@ -37,8 +38,6 @@ services/
   node-exporter/
     docker-compose.yml    # Standalone node-exporter (for plex/web VMs)
     node-exporter.service # systemd unit (manages docker compose)
-docs/
-  homelab-config.md       # Full reference documentation
 deploy.sh                 # Deploy script (run on the target VM)
 ```
 
@@ -81,7 +80,7 @@ If this is the first deploy on a fresh VM, you'll need Docker installed. The scr
 For VMs that use NFS (arr-stack, plex), add the NFS entry to `/etc/fstab` with `x-systemd.automount` so it mounts on first access rather than at boot (avoids a network race condition):
 
 ```
-192.168.1.33:/var/nfs/shared/media /mnt/media nfs vers=3,rsize=1048576,wsize=1048576,proto=tcp,hard,noatime,nconnect=8,timeo=600,retrans=2,_netdev,x-systemd.automount,x-systemd.mount-timeout=120 0 0
+<NAS_IP>:/var/nfs/shared/media /mnt/media nfs vers=3,rsize=1048576,wsize=1048576,proto=tcp,hard,noatime,nconnect=8,timeo=600,retrans=2,_netdev,x-systemd.automount,x-systemd.mount-timeout=120 0 0
 ```
 
 Then enable the network wait service and create the mount point:

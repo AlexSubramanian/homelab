@@ -4,7 +4,7 @@ services:
     container_name: grafana
     environment:
       - TZ=America/Denver
-      - GF_SERVER_ROOT_URL=http://192.168.1.75:3000
+      - GF_SERVER_ROOT_URL=http://192.168.1.228:3000
     volumes:
       - /opt/configs/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -45,16 +45,4 @@ services:
     pid: host
     volumes:
       - /:/host:ro,rslave
-    restart: unless-stopped
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    ports:
-      - "8888:8080"
     restart: unless-stopped

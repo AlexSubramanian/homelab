@@ -18,12 +18,18 @@ scrape_configs:
       - targets: ['192.168.1.104:9100']
         labels:
           hostname: 'webserver'
+      - targets: ['192.168.1.228:9100']
+        labels:
+          hostname: 'monitoring'
 
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets: ['192.168.1.75:8888']
         labels:
           hostname: 'arr-stack'
+      - targets: ['192.168.1.103:8888']
+        labels:
+          hostname: 'plex'
 
   - job_name: 'blackbox'
     metrics_path: /probe
@@ -51,6 +57,9 @@ scrape_configs:
       - targets: ['http://192.168.1.103:32400/identity']
         labels:
           service: 'Plex'
+      - targets: ['http://192.168.1.103:8181']
+        labels:
+          service: 'Tautulli'
       - targets: ['http://192.168.1.162:8123/manifest.json']
         labels:
           service: 'Home Assistant'

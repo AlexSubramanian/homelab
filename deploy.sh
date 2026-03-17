@@ -11,8 +11,9 @@ if [[ $# -ge 1 ]]; then
 else
     HOSTNAME="$(hostname -s)"
     case "$HOSTNAME" in
-        arr-stack*) SERVICE="arr-stack" ;;
-        plex*)      SERVICE="plex" ;;
+        arr-stack*)  SERVICE="arr-stack" ;;
+        plex*)       SERVICE="plex" ;;
+        monitoring*) SERVICE="monitoring" ;;
         *)
             echo "Error: cannot auto-detect service from hostname '$HOSTNAME'."
             echo "Usage: $0 <service-name>"

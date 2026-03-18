@@ -43,10 +43,10 @@ services/
     grafana/              # Grafana provisioning and dashboards
     blackbox/             # Blackbox exporter config
   nut-server/
-    etc/                  # NUT config files (symlinked to /etc/nut/ on Pi)
+    etc/                  # NUT config files (copied to /etc/nut/ on Pi)
     scripts/              # shutdown-ups.sh (SSHes into UDM SE + UNAS Pro)
   nut-client/
-    nut.conf              # NUT client config (symlinked to /etc/nut/ on Proxmox)
+    nut.conf              # NUT client config (copied to /etc/nut/ on Proxmox)
     upsmon.conf           # Secondary monitor config pointing to Pi
 deploy.sh                 # Deploy script (run on the target host)
 ```
@@ -83,8 +83,8 @@ Clone or pull the repo on the target host, then run:
 ./deploy.sh arr-stack
 ./deploy.sh plex
 ./deploy.sh monitoring
-./deploy.sh nut-server    # On Pi — symlinks NUT config to /etc/nut/, restarts NUT services
-./deploy.sh nut-client    # On Proxmox — symlinks NUT config to /etc/nut/, restarts nut-monitor
+./deploy.sh nut-server    # On Pi — copies NUT config to /etc/nut/, restarts NUT services
+./deploy.sh nut-client    # On Proxmox — copies NUT config to /etc/nut/, restarts nut-monitor
 ```
 
 For Docker-based services, the script will:
@@ -94,7 +94,7 @@ For Docker-based services, the script will:
 4. Enable and start the service
 5. Print the service status
 
-For native services (`nut-server`, `nut-client`), the script symlinks config files to `/etc/nut/` and restarts the relevant systemd services.
+For native services (`nut-server`, `nut-client`), the script copies config files to `/etc/nut/`, prompts for passwords on first deploy, sets permissions, and restarts the relevant systemd services. On re-deploys, already-configured password files are preserved.
 
 ### First-time setup
 
@@ -134,28 +134,13 @@ sudo systemctl daemon-reload
 sudo apt install nut sshpass
 ```
 
-2. Deploy the config files:
+2. Deploy (prompts for NUT passwords and SSH passwords on first run):
 
 ```bash
 ./deploy.sh nut-server
 ```
 
-3. Set real passwords in `/etc/nut/upsd.users` and `/etc/nut/upsmon.conf` (the symlinked files contain `<to-be-set>` placeholders).
-
-4. Create `/etc/nut/shutdown-ups.env` with SSH passwords for the UniFi devices (this file is NOT in the repo):
-
-```bash
-UDM_SSH_PASS="<udm-ssh-password>"
-UNAS_SSH_PASS="<unas-ssh-password>"
-```
-
-5. Restart NUT services:
-
-```bash
-sudo systemctl restart nut-driver nut-server nut-monitor
-```
-
-6. Verify the UPS is detected:
+3. Verify the UPS is detected:
 
 ```bash
 upsc cyberpower@localhost
@@ -163,23 +148,20 @@ upsc cyberpower@localhost
 
 #### Proxmox (NUT client)
 
-1. Install the NUT client:
+1. Install the NUT client and sudo:
 
 ```bash
-apt install nut-client
+apt install nut-client sudo
 ```
 
-2. Deploy the config files:
+2. Deploy (prompts for the monitor password on first run — must match the Pi's `[monitor]` password):
 
 ```bash
 ./deploy.sh nut-client
 ```
 
-3. Set the monitor password in `/etc/nut/upsmon.conf` to match the `[monitor]` password in the Pi's `upsd.users`.
-
-4. Restart and verify:
+3. Verify:
 
 ```bash
-systemctl restart nut-monitor
 upsc cyberpower@192.168.1.228
 ```

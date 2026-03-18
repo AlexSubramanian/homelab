@@ -23,6 +23,52 @@ else
 fi
 
 SERVICE_DIR="$SERVICES_DIR/$SERVICE"
+
+# --- Native (non-Docker) services ---
+case "$SERVICE" in
+    nut-server)
+        echo "==> Deploying: nut-server (native)"
+        echo
+
+        echo "==> Symlinking NUT config files to /etc/nut/"
+        for f in nut.conf ups.conf upsd.conf upsd.users upsmon.conf; do
+            sudo ln -sf "$SERVICE_DIR/etc/$f" "/etc/nut/$f"
+            echo "    /etc/nut/$f -> $SERVICE_DIR/etc/$f"
+        done
+
+        echo "==> Copying shutdown script to /etc/nut/"
+        sudo cp "$SERVICE_DIR/scripts/shutdown-ups.sh" /etc/nut/shutdown-ups.sh
+        sudo chmod +x /etc/nut/shutdown-ups.sh
+
+        echo "==> Restarting NUT services"
+        sudo systemctl restart nut-driver nut-server nut-monitor
+        echo
+        sudo systemctl status nut-driver nut-server nut-monitor --no-pager
+        echo
+        echo "==> Done."
+        exit 0
+        ;;
+    nut-client)
+        echo "==> Deploying: nut-client (native)"
+        echo
+
+        echo "==> Symlinking NUT config files to /etc/nut/"
+        for f in nut.conf upsmon.conf; do
+            sudo ln -sf "$SERVICE_DIR/$f" "/etc/nut/$f"
+            echo "    /etc/nut/$f -> $SERVICE_DIR/$f"
+        done
+
+        echo "==> Restarting nut-monitor"
+        sudo systemctl restart nut-monitor
+        echo
+        sudo systemctl status nut-monitor --no-pager
+        echo
+        echo "==> Done."
+        exit 0
+        ;;
+esac
+
+# --- Docker-based services ---
 COMPOSE_SRC="$SERVICE_DIR/docker-compose.yml"
 DOCKER_DIR="$DOCKER_BASE/$SERVICE"
 
@@ -87,6 +133,21 @@ if [[ -n "$SYSTEMD_SRC" ]]; then
         sudo rm "$UNIT_FILE"
     fi
     sudo systemctl link "$SYSTEMD_SRC"
+    sudo systemctl daemon-reload
+fi
+
+# --- Deploy systemd drop-in overrides ---
+SYSTEMD_DIR="$SERVICE_DIR/systemd"
+if [[ -d "$SYSTEMD_DIR" ]]; then
+    echo "==> Installing systemd drop-in overrides"
+    for override_dir in "$SYSTEMD_DIR"/*.d; do
+        if [[ -d "$override_dir" ]]; then
+            TARGET="/etc/systemd/system/$(basename "$override_dir")"
+            echo "    $TARGET/"
+            sudo mkdir -p "$TARGET"
+            sudo cp "$override_dir"/* "$TARGET/"
+        fi
+    done
     sudo systemctl daemon-reload
 fi
 

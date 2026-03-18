@@ -1,0 +1,10 @@
+[admin]
+  # Set this password manually after deploy
+  password = <to-be-set>
+  actions = SET FSD
+  upsmon primary
+
+[monitor]
+  # Set this password manually after deploy
+  password = <to-be-set>
+  upsmon secondary

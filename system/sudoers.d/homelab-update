@@ -1,0 +1,6 @@
+# Lets alex restart the homelab compose stacks without a password (used by update.sh).
+# Only these exact commands are allowed. Install as a root-owned COPY, never a symlink,
+# since anyone who can edit a symlinked file could grant themselves root:
+#   sudo visudo -cf system/sudoers.d/homelab-update && \
+#   sudo install -m 0440 -o root -g root system/sudoers.d/homelab-update /etc/sudoers.d/homelab-update
+alex ALL=(root) NOPASSWD: /usr/bin/systemctl restart plex, /usr/bin/systemctl restart arr-stack, /usr/bin/systemctl restart monitoring

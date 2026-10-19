@@ -50,3 +50,27 @@ services:
     volumes:
       - /:/host:ro,rslave
     restart: unless-stopped
+
+  diun:
+    image: crazymax/diun:4
+    container_name: diun
+    hostname: plex
+    command: serve
+    environment:
+      - TZ=America/Denver
+      - LOG_LEVEL=info
+      - DIUN_WATCH_WORKERS=10
+      - DIUN_WATCH_SCHEDULE=0 */6 * * *
+      - DIUN_WATCH_JITTER=30s
+      - DIUN_PROVIDERS_DOCKER=true
+      - DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT=true
+      - DIUN_NOTIF_NTFY_ENDPOINT=https://ntfy.sh
+      # NTFY_TOPIC lives in the gitignored .env next to this file
+      - DIUN_NOTIF_NTFY_TOPIC=${NTFY_TOPIC:-}
+      - DIUN_NOTIF_NTFY_PRIORITY=4
+      - 'DIUN_NOTIF_NTFY_TEMPLATETITLE={{ .Meta.Hostname }}: {{ .Entry.Image.Path }}:{{ .Entry.Image.Tag }} has an update'
+      - 'DIUN_NOTIF_NTFY_TEMPLATEBODY=New image for {{ .Entry.Metadata.ctn_names }}. Run ~/homelab/update.sh on {{ .Meta.Hostname }} to install it.'
+    volumes:
+      - /opt/configs/diun:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped

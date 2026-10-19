@@ -48,7 +48,11 @@ services/
   nut-client/
     nut.conf              # NUT client config (copied to /etc/nut/ on Proxmox)
     upsmon.conf           # Secondary monitor config pointing to Pi
+system/
+  sudoers.d/
+    homelab-update        # Passwordless `systemctl restart` for update.sh
 deploy.sh                 # Deploy script (run on the target host)
+update.sh                 # Pull newer images and restart the stack (run on the target host)
 ```
 
 ---
@@ -165,3 +169,42 @@ apt install nut-client sudo
 ```bash
 upsc cyberpower@192.168.1.228
 ```
+---
+
+## Image updates
+
+Each Docker host (plex, arr-stack, monitoring) runs [Diun](https://crazymax.dev/diun/) in its compose stack. Every 6 hours it checks the registries for the images its containers use and sends a push notification to [ntfy.sh](https://ntfy.sh) when one changes. Plex notifications are sent at high priority since Plex is exposed to the internet.
+
+Diun only notifies; nothing updates automatically. Diun only alerts when an image changes *after* it starts watching it, so use `update.sh --check` to see if anything is already out of date.
+
+### Updating
+
+On the host that sent the notification:
+
+```bash
+~/homelab/update.sh --check   # Pull images and show what would change
+~/homelab/update.sh           # Pull, show changes, confirm, restart the stack
+~/homelab/update.sh -y        # Same, without the confirmation prompt
+~/homelab/update.sh --prune   # Also remove the replaced images afterwards
+```
+
+`update.sh` restarts through systemd (`systemctl restart <service>`), which recreates every container in the stack, so expect about a minute of downtime. On the plex host it warns about active streams and prints the Plex Media Server version before and after. If no images changed it exits without restarting.
+
+### Setup (per host)
+
+1. Create the gitignored `.env` next to the compose file with the ntfy topic (treat the topic name like a password — anyone who knows it can read and send notifications):
+
+```bash
+echo 'NTFY_TOPIC=<your-topic>' > ~/homelab/services/<service>/.env
+chmod 600 ~/homelab/services/<service>/.env
+```
+
+2. Install the sudoers rule so `update.sh` can restart the stack without a password. Copy it, don't symlink it — it must stay root-owned:
+
+```bash
+cd ~/homelab
+sudo visudo -cf system/sudoers.d/homelab-update && \
+  sudo install -m 0440 -o root -g root system/sudoers.d/homelab-update /etc/sudoers.d/homelab-update
+```
+
+3. Subscribe to the topic in the ntfy app on your phone.

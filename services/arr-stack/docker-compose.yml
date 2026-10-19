@@ -72,7 +72,7 @@ services:
     restart: unless-stopped
 
   recyclarr:
-    image: ghcr.io/recyclarr/recyclarr:latest
+    image: ghcr.io/recyclarr/recyclarr:7
     container_name: recyclarr
     user: 977:988
     environment:

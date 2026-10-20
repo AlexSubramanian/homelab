@@ -128,9 +128,10 @@ sudo systemctl restart "$SERVICE"
 echo "==> Waiting for containers to come up"
 READY=0
 for _ in $(seq 40); do
+    # Only services in the compose file, so leftover orphan containers don't count
     # shellcheck disable=SC2046 # word splitting of container IDs is intended
     states="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' \
-        $(dc ps -aq) 2>/dev/null || true)"
+        $(dc ps -aq $(dc config --services)) 2>/dev/null || true)"
     if [[ -n "$states" ]] && ! grep -qvE '^running ?(healthy)?$' <<<"$states"; then
         READY=1
         break
@@ -142,6 +143,13 @@ echo
 dc ps --format 'table {{.Name}}\t{{.Image}}\t{{.Status}}'
 echo
 [[ $READY -eq 1 ]] || echo "WARNING: not every container is running/healthy after 2 minutes — check 'docker compose logs'."
+
+# Diun scans on startup, which races the rest of the stack coming up; rescan
+# now that everything is running so it watches every container.
+if dc config --services | grep -qx diun; then
+    echo "==> Restarting diun so it rescans the stack"
+    dc restart diun >/dev/null
+fi
 
 if [[ "$SERVICE" == "plex" ]]; then
     v="$(curl -s --retry 10 --retry-connrefused --retry-delay 3 http://localhost:32400/identity \

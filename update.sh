@@ -146,7 +146,7 @@ echo
 
 # Diun scans on startup, which races the rest of the stack coming up; rescan
 # now that everything is running so it watches every container.
-if dc config --services | grep -qx diun; then
+if grep -qx diun <<<"$(dc config --services)"; then
     echo "==> Restarting diun so it rescans the stack"
     dc restart diun >/dev/null
 fi

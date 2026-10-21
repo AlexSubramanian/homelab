@@ -161,6 +161,21 @@ AGENTENV
         sudo chown root:root /etc/homelab-agent/env
         sudo chmod 0600 /etc/homelab-agent/env
 
+        # The gitignored .env next to each compose file holds the ntfy topic and
+        # ships as 0600 alex:alex, which hlagent cannot read -- and without it
+        # `docker compose config` fails, so the agent reports an empty stack.
+        # Group-read for docker keeps it off limits to ordinary users while
+        # letting the agent read it; anyone in the docker group is already
+        # root-equivalent on this host, so the topic is no better protected from
+        # them at 0600.
+        for envf in "$SERVICES_DIR"/*/.env; do
+            [[ -f "$envf" ]] || continue
+            if [[ "$(stat -c '%a' "$envf")" != "640" || "$(stat -c '%G' "$envf")" != "docker" ]]; then
+                echo "==> Making $envf readable by the docker group"
+                chgrp docker "$envf" && chmod 640 "$envf"
+            fi
+        done
+
         echo "==> Linking systemd unit"
         UNIT_FILE=/etc/systemd/system/homelab-agent.service
         [[ -e "$UNIT_FILE" || -L "$UNIT_FILE" ]] && sudo rm "$UNIT_FILE"

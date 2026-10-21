@@ -261,8 +261,15 @@ The last two rollback points are kept per service; older ones are deleted along 
 
 ```bash
 echo 'NTFY_TOPIC=<your-topic>' > ~/homelab/services/<service>/.env
-chmod 600 ~/homelab/services/<service>/.env
+chgrp docker ~/homelab/services/<service>/.env
+chmod 640 ~/homelab/services/<service>/.env
 ```
+
+Group-read for `docker` rather than `0600`, because the homelab agent runs as
+`hlagent` and `docker compose config` fails without it. Anyone in the `docker`
+group is already root-equivalent on the host, so this protects the topic from
+exactly the same set of users `0600` did. `deploy.sh homelab-agent` fixes the
+mode if it finds an older `0600` file.
 
 2. Run `./deploy.sh <service>` at least once. Besides linking the compose file and unit,
    it creates `/var/lib/homelab/<service>/` and writes the `stack.env` the unit reads.

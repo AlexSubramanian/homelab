@@ -110,8 +110,22 @@ STATES=(); HEALTHS=(); VERSIONS=(); CREATEDS=(); DISPLAYS=(); IMAGE_IDS=(); PINN
 LOCAL_IDS=()
 
 gather() {
-    local svc ctn imgid
-    for svc in $(stack_dc config --services); do
+    local svc ctn imgid compose_services
+
+    # Fail loudly if the service list can't be read. `for svc in $(...)` would
+    # otherwise swallow the error -- command substitution doesn't trip set -e in
+    # a for list -- and emit a perfectly well-formed report with zero containers
+    # in it. That reads as "nothing to do" rather than "I could not look", which
+    # is the worst possible way to be wrong about whether updates are pending.
+    if ! compose_services="$(stack_dc config --services 2>&1)" \
+       || [[ -z "${compose_services//[[:space:]]/}" ]]; then
+        echo "Error: cannot list compose services for $SERVICE." >&2
+        echo "       docker compose said:" >&2
+        printf '%s\n' "$compose_services" | sed 's/^/         /' >&2
+        exit 1
+    fi
+
+    for svc in $compose_services; do
         local base_ref running_digest remote_digest state health version created display image_id pinned ctn_name local_id
         base_ref="$(stack_base_image_ref "$svc")"
         ctn="$(stack_dc ps -q "$svc" 2>/dev/null || true)"

@@ -182,20 +182,28 @@ stack_local_image_id() {
 # Current manifest digest for a tag in the registry. No layers are downloaded,
 # which is the whole reason a web button can afford to call this.
 #
-# Note: --format '{{.Manifest.Digest}}' looks like it should work and doesn't —
-# .Manifest is raw JSON to the template engine, so that expression silently
-# yields the default human output instead of a digest. Parse the Digest: line,
-# and fall back to hashing the raw manifest, which is what the digest *is*.
+# Returns empty when the registry can't be reached or buildx can't run. Callers
+# must treat empty as "unknown", never as "unchanged" -- see the remote_failed
+# reporting in update.sh.
+#
+# Two traps live here, both of which produced a confidently wrong answer:
+#
+#   --format '{{.Manifest.Digest}}' looks correct and isn't. .Manifest is raw
+#   JSON to the template engine, so that expression silently falls back to
+#   buildx's default human output.
+#
+#   An earlier version fell back to `--raw | sha256sum`. When buildx failed and
+#   printed nothing, that hashed empty input into
+#   e3b0c44298fc...b7852b855 -- a perfectly well-formed digest that matches no
+#   image, making every container look out of date. The fallback is gone, and
+#   the result is now validated to look like a digest before being returned.
 stack_remote_digest() {
     local ref="$1" d
     d="$(docker buildx imagetools inspect "$ref" 2>/dev/null \
             | sed -n 's/^Digest:[[:space:]]*//p' | head -1)"
-    if [[ -z "$d" ]]; then
-        d="$(docker buildx imagetools inspect "$ref" --raw 2>/dev/null | sha256sum 2>/dev/null \
-                | awk '{print "sha256:" $1}')"
-        [[ "$d" == "sha256:" ]] && d=""
-    fi
+    [[ "$d" =~ ^sha256:[0-9a-f]{64}$ ]] || d=""
     printf '%s\n' "$d"
+    return 0
 }
 
 stack_have_buildx() { docker buildx version >/dev/null 2>&1; }

@@ -13,6 +13,14 @@ Group=hlagent
 # process isolation changes what docker group membership can do.
 SupplementaryGroups=docker
 
+# hlagent is created with --no-create-home, so its passwd HOME (/home/hlagent)
+# does not exist. `docker buildx imagetools inspect` needs a writable config
+# dir and returns NOTHING when it can't get one -- which silently made every
+# image look out of date. Point both at the StateDirectory, which systemd
+# creates and chowns to this user.
+Environment=HOME=/var/lib/homelab-agent
+Environment=DOCKER_CONFIG=/var/lib/homelab-agent/.docker
+
 EnvironmentFile=/etc/homelab-agent/env
 ExecStart=/usr/bin/python3 /home/alex/homelab/services/homelab-agent/agent.py
 

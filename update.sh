@@ -107,7 +107,7 @@ require_state_dir() {
 
 SERVICES=(); CTN_NAMES=(); BASE_REFS=(); RUNNING_D=(); REMOTE_D=()
 STATES=(); HEALTHS=(); VERSIONS=(); CREATEDS=(); DISPLAYS=(); IMAGE_IDS=(); PINNED=()
-LOCAL_IDS=()
+LOCAL_IDS=(); REMOTE_FAILED=()
 
 gather() {
     local svc ctn imgid compose_services
@@ -126,7 +126,7 @@ gather() {
     fi
 
     for svc in $compose_services; do
-        local base_ref running_digest remote_digest state health version created display image_id pinned ctn_name local_id
+        local base_ref running_digest remote_digest remote_failed state health version created display image_id pinned ctn_name local_id
         base_ref="$(stack_base_image_ref "$svc")"
         ctn="$(stack_dc ps -q "$svc" 2>/dev/null || true)"
 
@@ -150,9 +150,13 @@ gather() {
             version=""; created=""; display=""; image_id=""
         fi
 
-        remote_digest=""
+        # An empty remote digest means "could not look", not "unchanged". It is
+        # tracked separately so a registry outage can never be reported as
+        # everything being up to date.
+        remote_digest=""; remote_failed=false
         if [[ $OFFLINE -eq 0 && -n "$base_ref" ]]; then
             remote_digest="$(stack_remote_digest "$base_ref")"
+            [[ -z "$remote_digest" ]] && remote_failed=true
         fi
 
         # What the tracked tag resolves to locally right now. Works offline and
@@ -167,7 +171,7 @@ gather() {
         HEALTHS+=("$health");      VERSIONS+=("$version")
         CREATEDS+=("$created");    DISPLAYS+=("$display")
         IMAGE_IDS+=("$image_id");  PINNED+=("$pinned")
-        LOCAL_IDS+=("$local_id")
+        LOCAL_IDS+=("$local_id");  REMOTE_FAILED+=("$remote_failed")
     done
 }
 
@@ -188,6 +192,14 @@ update_available_at() {
     [[ -n "${RUNNING_D[$i]}" && -n "${REMOTE_D[$i]}" && "${RUNNING_D[$i]}" != "${REMOTE_D[$i]}" ]]
 }
 
+count_remote_failures() {
+    local i n=0
+    for i in "${!SERVICES[@]}"; do
+        [[ "${REMOTE_FAILED[$i]}" == true ]] && n=$((n + 1))
+    done
+    printf '%s' "$n"
+}
+
 # --- JSON output -------------------------------------------------------------
 
 emit_json() {
@@ -201,6 +213,7 @@ emit_json() {
     printf '  %s,\n' "$(stack_json_kb offline "$([[ $OFFLINE -eq 1 ]] && echo true || echo false)")"
     printf '  %s,\n' "$(stack_json_kb pinned "$pin_state")"
     printf '  %s,\n' "$(stack_json_kv compose_file "$(stack_compose_file_value "$SERVICE")")"
+    printf '  %s,\n' "$(stack_json_kb remote_failures "$(count_remote_failures)")"
     printf '  "containers": [\n'
     for i in "${!SERVICES[@]}"; do
         [[ $first -eq 1 ]] || printf ',\n'
@@ -214,6 +227,7 @@ emit_json() {
         printf '%s, ' "$(stack_json_kv display_version "${DISPLAYS[$i]}")"
         printf '%s, ' "$(stack_json_kv running_digest "${RUNNING_D[$i]}")"
         printf '%s, ' "$(stack_json_kv remote_digest "${REMOTE_D[$i]}")"
+        printf '%s, ' "$(stack_json_kb remote_check_failed "${REMOTE_FAILED[$i]}")"
         printf '%s, ' "$(stack_json_kv state "${STATES[$i]}")"
         printf '%s, ' "$(stack_json_kv health "${HEALTHS[$i]}")"
         printf '%s, ' "$(stack_json_kb pinned "${PINNED[$i]}")"
@@ -565,6 +579,10 @@ for i in "${!SERVICES[@]}"; do
         printf '    %-14s not running\n' "$svc"
         continue
     fi
+    if [[ "${REMOTE_FAILED[$i]}" == true ]]; then
+        printf '    %-14s %-18s -> REGISTRY CHECK FAILED\n' "$svc" "${DISPLAYS[$i]}"
+        continue
+    fi
     if [[ "${PINNED[$i]}" == true ]]; then
         PINNED_SVCS+=("$svc")
         if update_available_at "$i"; then
@@ -592,6 +610,10 @@ if [[ ${#CHANGED[@]} -eq 0 && $FORCE -eq 0 ]]; then
     # service that quietly stops getting updates.
     if [[ $OFFLINE -eq 1 ]]; then
         echo "==> Local state only (--offline); no registry comparison was made."
+    elif [[ "$(count_remote_failures)" != "0" ]]; then
+        echo "==> Could not reach the registry for $(count_remote_failures) image(s)." >&2
+        echo "    No update is reported for those, but that is 'unknown', not 'up to date'." >&2
+        exit 2
     elif [[ ${#PINNED_STALE[@]} -gt 0 ]]; then
         echo "==> No updates for unpinned services, but" \
              "${#PINNED_STALE[@]} pinned service(s) have newer images:" \

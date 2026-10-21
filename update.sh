@@ -117,7 +117,11 @@ gather() {
     # a for list -- and emit a perfectly well-formed report with zero containers
     # in it. That reads as "nothing to do" rather than "I could not look", which
     # is the worst possible way to be wrong about whether updates are pending.
-    if ! compose_services="$(stack_dc config --services 2>&1)" \
+    #
+    # Sorted because `docker compose config --services` does not promise a
+    # stable order -- it varies between invocations, which made the admin page
+    # reshuffle its rows on every refresh and made snapshots undiffable.
+    if ! compose_services="$(stack_dc config --services 2>&1 | sort)" \
        || [[ -z "${compose_services//[[:space:]]/}" ]]; then
         echo "Error: cannot list compose services for $SERVICE." >&2
         echo "       docker compose said:" >&2

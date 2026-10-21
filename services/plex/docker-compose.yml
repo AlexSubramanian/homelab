@@ -69,7 +69,11 @@ services:
       - DIUN_NOTIF_NTFY_TOPIC=${NTFY_TOPIC:-}
       - DIUN_NOTIF_NTFY_PRIORITY=4
       - 'DIUN_NOTIF_NTFY_TEMPLATETITLE={{ .Meta.Hostname }}: {{ .Entry.Image.Path }}:{{ .Entry.Image.Tag }} has an update'
-      - 'DIUN_NOTIF_NTFY_TEMPLATEBODY=New image for {{ .Entry.Metadata.ctn_names }}. Run ~/homelab/update.sh on {{ .Meta.Hostname }} to install it.'
+      - 'DIUN_NOTIF_NTFY_TEMPLATEBODY=New image for {{ .Entry.Metadata.ctn_names }}. Tap to review and update.'
+      # Tapping the notification opens the admin page, which is where updates are
+      # applied. Until that page ships, the fallback is still
+      # `~/homelab/update.sh` on the host named in the title.
+      - DIUN_NOTIF_NTFY_CLICK=https://alexsubramanian.com/admin
     volumes:
       - /opt/configs/diun:/data
       - /var/run/docker.sock:/var/run/docker.sock:ro

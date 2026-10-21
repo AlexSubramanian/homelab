@@ -5,6 +5,9 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICES_DIR="$REPO_DIR/services"
 DOCKER_BASE="/opt/docker"
 
+# shellcheck source=lib/stack.sh
+source "$REPO_DIR/lib/stack.sh"
+
 # Determine target service from argument or hostname
 if [[ $# -ge 1 ]]; then
     SERVICE="$1"
@@ -230,6 +233,43 @@ if [[ -d "$SYSTEMD_DIR" ]]; then
         fi
     done
     sudo systemctl daemon-reload
+fi
+
+# --- Runtime state directory ---
+# The units read COMPOSE_FILE from here, and update.sh writes rollback snapshots
+# into it. It lives outside /opt/docker/<service> because that path is a symlink
+# back into this git checkout -- generated state there would dirty the worktree.
+if stack_is_known_service "$SERVICE"; then
+    STATE_DIR="$(stack_state_dir "$SERVICE")"
+    ENV_FILE="$(stack_env_file "$SERVICE")"
+
+    echo "==> Runtime state: $STATE_DIR"
+    sudo mkdir -p "$(stack_history_dir "$SERVICE")"
+    # Group-owned by docker, setgid: update.sh runs as a normal user today and as
+    # the agent user in future, and both need docker group membership anyway, so
+    # write access here grants nothing that group doesn't already confer.
+    sudo chgrp -R docker "$STATE_DIR"
+    sudo chmod 2775 "$STATE_DIR" "$(stack_history_dir "$SERVICE")"
+
+    if stack_is_pinned "$SERVICE"; then
+        # Rewriting stack.env here would silently unpin a rolled-back stack and
+        # the next start would quietly pull the bad image back in.
+        echo "    Keeping existing stack.env -- rollback pin active on:" \
+             "$(stack_pinned_services "$SERVICE" | tr '\n' ' ')"
+        echo "    Clear it with: ./update.sh --rollback --clear $SERVICE"
+    else
+        echo "    Writing $ENV_FILE"
+        sudo tee "$ENV_FILE" >/dev/null <<ENVEOF
+# Written by deploy.sh -- systemd reads this via EnvironmentFile.
+# COMPOSE_PROJECT_NAME is pinned so adding a rollback overlay can never change
+# the project name and orphan the running containers.
+COMPOSE_PROJECT_NAME=$SERVICE
+COMPOSE_FILE=$(stack_base_compose "$SERVICE")
+ENVEOF
+        sudo chgrp docker "$ENV_FILE"
+        sudo chmod 664 "$ENV_FILE"
+    fi
+    echo
 fi
 
 # --- Start ---

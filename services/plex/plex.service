@@ -7,8 +7,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/docker/plex
-ExecStart=/usr/bin/docker compose -f /opt/docker/plex/docker-compose.yml up
-ExecStop=/usr/bin/docker compose -f /opt/docker/plex/docker-compose.yml down
+# The compose file list is data, not a hardcoded -f flag, so update.sh can add a
+# digest-pinned rollback overlay to COMPOSE_FILE without editing this unit.
+# Passing -f explicitly would also disable Compose's override discovery.
+# The leading - means a missing stack.env is survivable: COMPOSE_FILE is then
+# unset and Compose discovers docker-compose.yml in WorkingDirectory as before.
+EnvironmentFile=-/var/lib/homelab/plex/stack.env
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
 Restart=on-failure
 TimeoutStartSec=0
 

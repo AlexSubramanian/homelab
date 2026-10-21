@@ -48,18 +48,41 @@ services/
   nut-client/
     nut.conf              # NUT client config (copied to /etc/nut/ on Proxmox)
     upsmon.conf           # Secondary monitor config pointing to Pi
+lib/
+  stack.sh                # Shared helpers for update.sh (compose file resolution,
+                          # digests, versions) -- sourced, not run
 system/
   sudoers.d/
     homelab-update        # Passwordless `systemctl restart` for update.sh
 deploy.sh                 # Deploy script (run on the target host)
-update.sh                 # Pull newer images and restart the stack (run on the target host)
+update.sh                 # Check, update and roll back the stack (run on the target host)
 ```
+
+Runtime state lives outside the repo, under `/var/lib/homelab/<service>/`:
+
+```
+/var/lib/homelab/<service>/
+  stack.env                      # COMPOSE_FILE + COMPOSE_PROJECT_NAME, read by systemd
+  docker-compose.rollback.yml    # Digest pins, present only while rolled back
+  history/<timestamp>.json       # Rollback points written before each update
+```
+
+`deploy.sh` creates this directory. It is deliberately not under `/opt/docker/<service>/`,
+because that path is a symlink back into this checkout and generated files there would
+show up as untracked changes in the working tree.
 
 ---
 
 ## How it works
 
 Docker Compose files are symlinked from this repo into `/opt/docker/<service>/`. Each service has a systemd unit file that manages the compose stack — `systemctl start arr-stack` runs `docker compose up` from `/opt/docker/arr-stack/`.
+
+The unit doesn't pass `-f` explicitly. It reads `COMPOSE_FILE` from
+`/var/lib/homelab/<service>/stack.env` instead, so `update.sh --rollback` can append a
+digest-pinned overlay to the file list without the unit needing to change. (An explicit
+`-f` would also disable Compose's override-file discovery, so this isn't just a
+convenience.) `COMPOSE_PROJECT_NAME` is pinned in the same file so adding the overlay can
+never change the project name and orphan the running containers.
 
 The repo is cloned on each host at `/home/alex/homelab`. `deploy.sh` handles the stop → re-link → start cycle.
 
@@ -182,13 +205,50 @@ Diun only notifies; nothing updates automatically. Diun only alerts when an imag
 On the host that sent the notification:
 
 ```bash
-~/homelab/update.sh --check   # Pull images and show what would change
+~/homelab/update.sh --check   # Show what would change, without pulling
 ~/homelab/update.sh           # Pull, show changes, confirm, restart the stack
 ~/homelab/update.sh -y        # Same, without the confirmation prompt
 ~/homelab/update.sh --prune   # Also remove the replaced images afterwards
+~/homelab/update.sh --json    # Machine-readable status
+~/homelab/update.sh --offline # Local state only, no registry lookups
 ```
 
+`--check` compares the registry's manifest digest against the digest each running
+container was pulled at. No layers are downloaded, so it takes a couple of seconds rather
+than the minutes a full `docker compose pull` needs — the actual pull happens only once
+something is known to have changed.
+
 `update.sh` restarts through systemd (`systemctl restart <service>`), which recreates every container in the stack, so expect about a minute of downtime. On the plex host it warns about active streams and prints the Plex Media Server version before and after. If no images changed it exits without restarting.
+
+Images that carry an `org.opencontainers.image.version` label (anything from
+linuxserver.io, for instance) report a real version. The `prom/*` and `grafana/*` images
+carry no version label at all, so those fall back to the image build date — `built
+2026-09-25` rather than a meaningless hex digest.
+
+### Rolling back
+
+Every update writes a rollback point before restarting: the manifest digest of each
+running container, plus a `homelab-prev/<service>:<timestamp>` tag on each outgoing image.
+The tag matters — the moment `:latest` moves, the old image is dangling, and `--prune`
+would otherwise delete the exact thing a rollback needs.
+
+```bash
+~/homelab/update.sh --history           # List available rollback points
+~/homelab/update.sh --rollback          # Undo the last update
+~/homelab/update.sh --rollback --clear  # Remove the pin, back onto the tracked tags
+```
+
+A rollback pins **only the services the last update actually changed**, by writing
+`docker-compose.rollback.yml` and appending it to `COMPOSE_FILE` in `stack.env`. Compose
+merges it per-service, so everything else keeps the base file's definition untouched.
+
+While a service is pinned it will **not** receive updates. `--check` reports it as
+`PINNED`, and flags separately when a newer image exists upstream, so a rollback you
+forgot about can't quietly sit there looking up to date. `deploy.sh` also refuses to
+rewrite `stack.env` while a pin is active, so redeploying can't silently un-pin a stack.
+
+The last two rollback points are kept per service; older ones are deleted along with their
+`homelab-prev/*` tags, since each one holds a full image out of the prune path.
 
 ### Setup (per host)
 
@@ -199,7 +259,10 @@ echo 'NTFY_TOPIC=<your-topic>' > ~/homelab/services/<service>/.env
 chmod 600 ~/homelab/services/<service>/.env
 ```
 
-2. Install the sudoers rule so `update.sh` can restart the stack without a password. Copy it, don't symlink it — it must stay root-owned:
+2. Run `./deploy.sh <service>` at least once. Besides linking the compose file and unit,
+   it creates `/var/lib/homelab/<service>/` and writes the `stack.env` the unit reads.
+
+3. Install the sudoers rule so `update.sh` can restart the stack without a password. Copy it, don't symlink it — it must stay root-owned:
 
 ```bash
 cd ~/homelab
@@ -207,4 +270,4 @@ sudo visudo -cf system/sudoers.d/homelab-update && \
   sudo install -m 0440 -o root -g root system/sudoers.d/homelab-update /etc/sudoers.d/homelab-update
 ```
 
-3. Subscribe to the topic in the ntfy app on your phone.
+4. Subscribe to the topic in the ntfy app on your phone.

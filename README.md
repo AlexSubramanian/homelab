@@ -48,6 +48,10 @@ services/
   nut-client/
     nut.conf              # NUT client config (copied to /etc/nut/ on Proxmox)
     upsmon.conf           # Secondary monitor config pointing to Pi
+  homelab-agent/
+    agent.py              # HTTP front end for update.sh (stdlib only)
+    homelab-agent.service # systemd unit (native, NOT in the compose stack)
+    README.md             # API, design notes, security model
 lib/
   stack.sh                # Shared helpers for update.sh (compose file resolution,
                           # digests, versions) -- sourced, not run
@@ -110,6 +114,7 @@ Clone or pull the repo on the target host, then run:
 ./deploy.sh arr-stack
 ./deploy.sh plex
 ./deploy.sh monitoring
+./deploy.sh homelab-agent # On any Docker host — creates hlagent, installs sudoers, starts the agent
 ./deploy.sh nut-server    # On Pi — copies NUT config to /etc/nut/, restarts NUT services
 ./deploy.sh nut-client    # On Proxmox — copies NUT config to /etc/nut/, restarts nut-monitor
 ```

@@ -1,0 +1,45 @@
+[Unit]
+Description=Homelab update agent
+Documentation=https://github.com/AlexSubramanian/homelab
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hlagent
+Group=hlagent
+# Needed to talk to the docker socket. This is root-equivalent on the host and
+# is the real reason the agent is bound to the LAN and token-gated: no amount of
+# process isolation changes what docker group membership can do.
+SupplementaryGroups=docker
+
+EnvironmentFile=/etc/homelab-agent/env
+ExecStart=/usr/bin/python3 /home/alex/homelab/services/homelab-agent/agent.py
+
+# systemd creates and owns these, so deploy.sh doesn't have to.
+StateDirectory=homelab-agent
+RuntimeDirectory=homelab-agent
+RuntimeDirectoryPreserve=yes
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening is deliberately limited to the mount-namespace options.
+#
+# update.sh calls `sudo systemctl restart`, which NoNewPrivileges=yes would
+# break -- and a long list of the appealing directives (RestrictSUIDSGID,
+# ProtectKernelTunables, ProtectKernelModules, RestrictNamespaces,
+# SystemCallFilter, PrivateDevices, ...) each imply NoNewPrivileges=yes as a
+# side effect. Setting any of them would stop the agent being able to restart a
+# stack, and the failure would only show up the first time someone pressed the
+# button.
+#
+# ProtectSystem=strict is avoided for a related reason: it would make /run
+# read-only, which is where the docker and D-Bus sockets live. `full` still
+# gives read-only /usr, /boot, /efi and /etc.
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

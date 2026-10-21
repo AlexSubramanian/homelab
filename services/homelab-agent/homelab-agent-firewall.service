@@ -1,0 +1,18 @@
+[Unit]
+Description=Restrict the homelab agent port to the admin API host
+Documentation=https://github.com/AlexSubramanian/homelab
+# After docker so our table is loaded once Docker has finished installing its
+# own rules. The two don't overlap, but ordering keeps the log tidy.
+After=docker.service
+Before=homelab-agent.service
+PartOf=homelab-agent.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/homelab-agent.nft
+# Leading - so stopping succeeds even if the table is already gone.
+ExecStop=-/usr/sbin/nft delete table inet homelab_agent
+
+[Install]
+WantedBy=multi-user.target

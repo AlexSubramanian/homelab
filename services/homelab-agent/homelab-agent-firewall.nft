@@ -1,0 +1,47 @@
+#!/usr/sbin/nft -f
+
+# Restrict the homelab agent's port to the host running the admin API.
+#
+# This is deliberately a SEPARATE table whose policy is accept and whose only
+# rules match tcp/9180. It cannot affect SSH, Docker's published container
+# ports, or anything else on the host -- the worst a mistake in this file can do
+# is lock out the admin API.
+#
+# Two things NOT to do instead:
+#
+#   Don't put this in /etc/nftables.conf and enable nftables.service. That file
+#   ships starting with `flush ruleset`, which would delete the NAT rules Docker
+#   manages and break every published container port on the host.
+#
+#   Don't add it to a shared `inet filter` table. Docker's rules live in the ip
+#   family and are rewritten on docker restarts; keeping ours separate means
+#   neither side can clobber the other.
+#
+# homelab-agent-firewall.service loads this at boot, before the agent starts.
+
+define ADMIN_HOST = 192.168.1.104
+define AGENT_PORT = 9180
+
+# Create-then-delete makes a reload idempotent: `delete` alone errors when the
+# table doesn't exist yet, which would fail the unit on first start.
+table inet homelab_agent
+delete table inet homelab_agent
+
+table inet homelab_agent {
+    chain input {
+        type filter hook input priority 0; policy accept;
+
+        # The admin API on the web VM.
+        tcp dport $AGENT_PORT ip saddr $ADMIN_HOST accept
+
+        # The host itself, for local debugging. The agent binds to the LAN
+        # address rather than 127.0.0.1, so `curl <lan-ip>:9180` from the host
+        # arrives over the loopback interface.
+        tcp dport $AGENT_PORT iif lo accept
+
+        # Everything else on the LAN, and all IPv6 (ip saddr can't match it).
+        # Counter so `nft list table inet homelab_agent` shows whether anything
+        # has been knocking.
+        tcp dport $AGENT_PORT counter drop
+    }
+}

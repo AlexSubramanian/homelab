@@ -176,6 +176,18 @@ AGENTENV
             fi
         done
 
+        echo "==> Installing the port restriction (nftables)"
+        sudo mkdir -p /etc/nftables.d
+        sudo install -m 0644 -o root -g root \
+            "$SERVICE_DIR/homelab-agent-firewall.nft" /etc/nftables.d/homelab-agent.nft
+        FW_UNIT=/etc/systemd/system/homelab-agent-firewall.service
+        [[ -e "$FW_UNIT" || -L "$FW_UNIT" ]] && sudo rm "$FW_UNIT"
+        sudo systemctl link "$SERVICE_DIR/homelab-agent-firewall.service"
+        sudo systemctl daemon-reload
+        sudo systemctl enable homelab-agent-firewall
+        sudo systemctl restart homelab-agent-firewall
+        echo "    Port 9180 now reachable only from 192.168.1.104 and this host"
+
         echo "==> Linking systemd unit"
         UNIT_FILE=/etc/systemd/system/homelab-agent.service
         [[ -e "$UNIT_FILE" || -L "$UNIT_FILE" ]] && sudo rm "$UNIT_FILE"

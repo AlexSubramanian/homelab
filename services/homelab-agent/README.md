@@ -61,10 +61,19 @@ matter are therefore the ones limiting who can reach the agent at all:
 - every call needs a bearer token, compared with `hmac.compare_digest`
 - the action set is fixed and tiny
 
-Traffic is plain HTTP on the LAN, so the token crosses the wire in clear. On a
-switched home network behind one gateway that is a deliberate, bounded
-trade-off; an nftables rule restricting port 9180 to the web VM is the sensible
-next hardening step, and TLS after that.
+Port 9180 is restricted to the web VM by `homelab-agent-firewall.nft`, loaded
+at boot by `homelab-agent-firewall.service`. It is an isolated nftables table
+whose policy is `accept` and whose only rules match tcp/9180, so a mistake in it
+cannot affect SSH or Docker's published ports.
+
+Note what it must *not* be: putting those rules in `/etc/nftables.conf` and
+enabling `nftables.service` would run that file's opening `flush ruleset` and
+delete the NAT rules Docker manages, breaking every published container port on
+the host.
+
+Traffic is still plain HTTP, so the token crosses the LAN in clear. With the
+port restricted to one host that is a bounded trade-off; TLS is the next
+hardening step if the agent ever needs to be reachable more widely.
 
 ## Deploy
 
@@ -73,8 +82,9 @@ next hardening step, and TLS after that.
 ```
 
 On first run this creates the `hlagent` user, adds it to `docker`, installs the
-sudoers rule, generates a token into `/etc/homelab-agent/env` (0600, root-owned)
-and prints it once for VM 104's `.env`. It also relaxes `$HOME` from 0700 to
+sudoers rule, installs the nftables restriction, generates a token into
+`/etc/homelab-agent/env` (0600, root-owned) and prints it once for VM 104's
+`.env`. It also relaxes `$HOME` from 0700 to
 0711 so `hlagent` can traverse to the repo — the repo directory is already
 world-readable, and 0711 still prevents anyone listing your home directory.
 

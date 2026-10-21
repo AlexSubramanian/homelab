@@ -4,7 +4,13 @@ services:
     container_name: grafana
     environment:
       - TZ=America/Denver
-      - GF_SERVER_ROOT_URL=http://192.168.1.228:3000
+      # Served at a domain root rather than a sub-path. Sub-path serving
+      # (/admin/grafana) rewrites asset paths and breaks direct LAN access on
+      # :3000; a root-level root URL leaves http://192.168.1.228:3000 working.
+      - GF_SERVER_ROOT_URL=https://grafana.alexsubramanian.com
+      # Grafana keeps its own login. Access gates who reaches the subdomain at
+      # all, but a Grafana session shouldn't be granted just by arriving there.
+      - GF_SERVER_ENFORCE_DOMAIN=false
     volumes:
       - /opt/configs/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
